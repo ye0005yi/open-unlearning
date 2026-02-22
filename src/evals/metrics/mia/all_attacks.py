@@ -24,6 +24,7 @@ class Attack:
     def __init__(self, model, data, collator, batch_size, **kwargs):
         """Initialize attack with model and create dataloader."""
         self.model = model
+        self.model._data = data
         self.dataloader = DataLoader(data, batch_size=batch_size, collate_fn=collator)
         self.setup(**kwargs)
 

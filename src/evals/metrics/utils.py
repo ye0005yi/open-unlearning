@@ -81,7 +81,7 @@ def run_batchwise_evals(model, dataloader, batch_eval_fn, batch_eval_fn_args, ev
 
 def evaluate_probability(model, batch):
     """Evaluate model probabilities and average token-level loss for a given batch."""
-    batch = {k: v.to(model.device) for k, v in batch.items()}
+    batch = {k: v.to(model.device) if hasattr(v, "to") else v for k, v in batch.items()}
     with torch.no_grad():
         output = model(**batch)
     logits = output.logits
@@ -111,7 +111,7 @@ def tokenwise_logprobs(model, batch, grad=False, return_labels=False):
     log_probs_batch (List[Tensor]): Tensors of size seq_len where seq_len is length of labeled tokens
     labels_batch (List[Tensor]): List of tensors of length N. Returned only if return_labels is True
     """
-    batch = {k: v.to(model.device) for k, v in batch.items()}
+    batch = {k: v.to(model.device) if hasattr(v, "to") else v for k, v in batch.items()}
     with torch.set_grad_enabled(grad):
         output = model(**batch)
 
@@ -154,7 +154,7 @@ def tokenwise_vocab_logprobs(model, batch, grad=False, return_labels=False):
         for each sequence, where N is the length of labeled tokens and V is vocab size.
         labels_batch (List[Tensor]): List of tensors of length N. Returned only if return_labels is True
     """
-    batch = {k: v.to(model.device) for k, v in batch.items()}
+    batch = {k: v.to(model.device) if hasattr(v, "to") else v for k, v in batch.items()}
     with torch.set_grad_enabled(grad):
         output = model(**batch)
 
@@ -254,7 +254,10 @@ def eval_text_similarity(model, tokenizer, batch, generation_args):
     def eval_rouge_recall_batch(gen_outputs, ground_truths):
         scorer = rouge_scorer.RougeScorer(["rouge1", "rougeL"], use_stemmer=True)
         evals = []
+        #print('============= gen_outputs  :', gen_outputs[0])
         for gen, gt in zip(gen_outputs, ground_truths):
+            #print('------------- ground_truths:', gt)
+            #print('============= gen_outputs  :', gen)
             rouge_scores = scorer.score(gt, gen)
             evals.append(
                 {
@@ -265,7 +268,7 @@ def eval_text_similarity(model, tokenizer, batch, generation_args):
             )
         return evals
 
-    batch = {k: v.to(model.device) for k, v in batch.items()}
+    batch = {k: v.to(model.device) if hasattr(v, "to") else v for k, v in batch.items()}
     input_ids = batch["input_ids"]
     labels = batch["labels"]
     input_texts = tokenizer.batch_decode(
@@ -275,6 +278,7 @@ def eval_text_similarity(model, tokenizer, batch, generation_args):
     full_texts = tokenizer.batch_decode(
         tokens, skip_special_tokens=True, clean_up_tokenization_spaces=True
     )
+    #print("-------------- Question full", full_texts[0])
     ground_truths = [
         full_text.replace(input_text, "").strip()
         for input_text, full_text in zip(input_texts, full_texts)
@@ -293,7 +297,7 @@ def eval_text_similarity(model, tokenizer, batch, generation_args):
         generation_args["stopping_criteria"] = sc
     output = model.generate(
         input_ids,
-        attention_mask=attention_mask,
+        **batch,
         **generation_args,
         pad_token_id=tokenizer.eos_token_id,
     )

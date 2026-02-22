@@ -50,6 +50,8 @@ class QADataset(Dataset):
             self.predict_with_generate,
         )
         item_dct = {
+            "question": prompt_msgs,
+            "answer": response_msgs,
             "input_ids": tokenized_data["input_ids"],
             "labels": tokenized_data["labels"],
             "attention_mask": tokenized_data["attention_mask"],

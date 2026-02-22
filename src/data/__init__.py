@@ -62,6 +62,16 @@ def get_data(data_cfg: DictConfig, mode="train", **kwargs):
             data.pop(split)
     return data
 
+def get_unlearn_data(data_cfg: DictConfig, **kwargs):
+    data_cfg = dict(data_cfg)
+    anchor = data_cfg.pop("anchor", "forget")
+    forget_data = get_datasets(data_cfg[anchor], **kwargs)
+    question_key = forget_data.question_key
+    answer_key = forget_data.answer_key
+
+    ret_data = [f"{question_key}: {data[question_key]}\n\n{answer_key}: {data[answer_key]}" for data in forget_data.data]
+    return ret_data
+
 
 def _get_single_collator(collator_name: str, collator_cfg: DictConfig, **kwargs):
     collator_handler_name = collator_cfg.get("handler")

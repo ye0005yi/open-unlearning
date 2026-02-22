@@ -4,10 +4,29 @@ import torch.nn as nn
 import logging
 import gc
 from copy import deepcopy
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM as ALM
 
 logger = logging.getLogger("model")
 
+class AutoModelForCausalLM(LlamaForCausalLM):
+    def __init__(self, config):
+        super().__init__(config)
+
+    def forward(
+        self,
+        *args,
+        **kwargs
+    ):
+        for k in [k for k, v in kwargs.items() if not hasattr(v, "to")]:
+            kwargs.pop(k)
+        return super().forward(*args, **kwargs)
+
+    def generate(self, *args, **kwargs):
+        _ = kwargs.pop('input_ids', None)
+        _ = kwargs.pop('labels', None)
+        _ = kwargs.pop('questions', None)
+        _ = kwargs.pop('answers', None)
+        return super().generate(*args, **kwargs)
 
 class ProbedLlamaForCausalLM(LlamaForCausalLM):
     """

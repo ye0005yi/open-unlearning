@@ -4,6 +4,8 @@ import logging
 from typing import Callable, Any, Dict
 from data import get_datasets, get_collators
 
+import copy
+
 logger = logging.getLogger("metrics")
 
 
@@ -69,12 +71,15 @@ class UnlearningMetric:
         if dataset_cfgs is not None:
             data = self.get_datasets(dataset_cfgs=dataset_cfgs, **kwargs)
             kwargs.update({"data": data})
+            model._data = copy.deepcopy(data)
 
         # Load collators
         collator_cfgs = kwargs.pop("collators", None)
         if collator_cfgs is not None:
             collators = self.get_collators(collator_cfgs=collator_cfgs, **kwargs)
             kwargs.update({"collators": collators})
+            model._collators = copy.deepcopy(collators)
+            model._collators.index = None
 
         # Evaluate precompute and load results
         pre_compute_cfgs = kwargs.pop("pre_compute", {})

@@ -64,4 +64,10 @@ class DataCollatorForSupervisedDataset(object):
                     )
                 else:
                     raise Warning(f"{self.index} not found in dataset")
+
+            if 'question' in instances[0]:
+                questions = [instance['question'] for instance in instances]
+                answers = [instance['answer'] for instance in instances]
+                return_dct.update({'questions': questions, 'answers': answers})
+
         return return_dct

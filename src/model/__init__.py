@@ -1,10 +1,11 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoTokenizer
 from omegaconf import DictConfig, open_dict
 from typing import Dict, Any
 import os
 import torch
 import logging
-from model.probe import ProbedLlamaForCausalLM
+from model.probe import ProbedLlamaForCausalLM, AutoModelForCausalLM
+from model.tfu import TFULlamaForCausalLM
 
 hf_home = os.getenv("HF_HOME", default=None)
 
@@ -56,6 +57,12 @@ def get_model(model_cfg: DictConfig):
             **model_args,
             cache_dir=hf_home,
         )
+        w = model_cfg.get("w", None)
+        if w:
+            oldw = model.w
+            model.w = w
+            logger.info(f"Find w in config, set w to {w}, original w is {oldw}")
+
     except Exception as e:
         logger.warning(f"Model {model_path} requested with {model_cfg.model_args}")
         raise ValueError(
@@ -105,3 +112,4 @@ def get_tokenizer(tokenizer_cfg: DictConfig):
 # register models
 _register_model(AutoModelForCausalLM)
 _register_model(ProbedLlamaForCausalLM)
+_register_model(TFULlamaForCausalLM)
