@@ -5,6 +5,7 @@ import logging
 import gc
 from copy import deepcopy
 from transformers import AutoModelForCausalLM as ALM
+import functools
 
 logger = logging.getLogger("model")
 
@@ -12,6 +13,7 @@ class AutoModelForCausalLM(LlamaForCausalLM):
     def __init__(self, config):
         super().__init__(config)
 
+    @functools.wraps(LlamaForCausalLM.forward)
     def forward(
         self,
         *args,

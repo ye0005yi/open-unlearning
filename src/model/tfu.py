@@ -87,7 +87,7 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
 
         return tokenized_data
 
-    def _construct_enhanced_ids(self, questions, answers):
+    def __construct_enhanced_ids(self, questions, answers):
         questions = [i[0] for i in questions]
         answers = [i[0] for i in answers]
         enhanced_ori = self.retriever.batch(questions)
@@ -103,6 +103,18 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
         batch_enhanced = {k: v.to(self.device) if hasattr(v, "to") else v for k, v in batch_enhanced.items()}
         return batch_enhanced
 
+    def _construct_enhanced_ids(self, questions, answers, input_ids, kwargs):
+        if getattr(self, "retriever", None):
+            return self.__construct_enhanced_ids(questions, answers)
+        elif input_ids is not None:
+            batch_sz = len(input_ids)
+            self.adjust_w(torch.ones(batch_sz))
+            return {'input_ids': input_ids, 'attention_mask': kwargs['attention_mask']}
+        else:
+            batch_sz = len(kwargs['input_ids'])
+            self.adjust_w(torch.ones(batch_sz))
+            return kwargs
+
     def _get_enhanced_logits(self, batch_enhanced, mask):
         is_all_one = torch.all(torch.abs(self.w_adj - 1.0) < 1e-6)
         if is_all_one:
@@ -111,7 +123,7 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
         ret_enh = self.help_model(**batch_enhanced)
         ret_enh_unignore = ret_enh.logits[mask]
         if batch_enhanced.get('use_cache', False):
-            self.past_key_values = ret_enh.past_key_values
+            self.gen_past_key_values = ret_enh.past_key_values
         return ret_enh_unignore
     
     def _compose_logits(self, ret_ori, ret_enh_unignore, mask):
@@ -134,18 +146,18 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
         questions = kwargs.pop('questions', None)
         answers = kwargs.pop('answers', None)
         if not self.gen_mode and questions != None and self._data is not None:
-            batch_enhanced = self._construct_enhanced_ids(questions, answers)
+            batch_enhanced = self._construct_enhanced_ids(questions, answers, None, kwargs)
             ret_enh_unignore = self._get_enhanced_logits(batch_enhanced, batch_enhanced['labels'] != IGNORE_INDEX)
         if self.gen_mode:
             if self.first_time == 0:
-                self.past_key_values = DynamicCache()
+                self.gen_past_key_values = DynamicCache()
                 enhanced_ids = self.batch_enhanced_ids
             else:
                 #self.batch_enhanced_ids = torch.cat([self.batch_enhanced_ids, kwargs['input_ids'][:, -1:]], dim=-1)
                 self.batch_enhanced_attention_mask = torch.cat([self.batch_enhanced_attention_mask, self.pre_cal_append_att_mask], dim=-1)
-                assert self.past_key_values != None
+                assert self.gen_past_key_values != None
                 enhanced_ids = kwargs['input_ids'][:, -1:]
-            batch_enhanced = {'input_ids': enhanced_ids, 'attention_mask': self.batch_enhanced_attention_mask, 'use_cache': True, 'past_key_values':self.past_key_values}
+            batch_enhanced = {'input_ids': enhanced_ids, 'attention_mask': self.batch_enhanced_attention_mask, 'use_cache': True, 'past_key_values':self.gen_past_key_values}
             #print(self._data.tokenizer.decode(enhanced_ids[0]), end='')
             ret_enh_unignore = self._get_enhanced_logits(batch_enhanced, (slice(None), slice(-1, None), slice(None))) #[:, -1:, :]
             self.first_time += 1
@@ -171,12 +183,12 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
         if questions != None and self._data is not None:
             self.gen_mode = True
             self.first_time = 0
-            tmp_enhanced = self._construct_enhanced_ids(questions, answers)
+            tmp_enhanced = self._construct_enhanced_ids(questions, answers, input_ids, kwargs)
             self.batch_enhanced_ids = tmp_enhanced['input_ids']
             self.batch_enhanced_attention_mask = tmp_enhanced['attention_mask']
             # pre calcualted mask to append batch_size * 1, looks like [[1], [1], ..., [1]]
             self.pre_cal_append_att_mask = torch.ones(len(self.batch_enhanced_ids), 1).to(self.device)
-            print("---------------- generate --------------")
+
         ret = super().generate(*args, **kwargs)
 
         if questions != None and self._data is not None:

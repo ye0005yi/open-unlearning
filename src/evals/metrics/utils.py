@@ -10,6 +10,7 @@ import torch
 from transformers import StoppingCriteria, StoppingCriteriaList, PreTrainedTokenizer
 from data.utils import IGNORE_INDEX
 import warnings
+import json
 
 
 def dict_transpose(evals):
@@ -254,10 +255,7 @@ def eval_text_similarity(model, tokenizer, batch, generation_args):
     def eval_rouge_recall_batch(gen_outputs, ground_truths):
         scorer = rouge_scorer.RougeScorer(["rouge1", "rougeL"], use_stemmer=True)
         evals = []
-        #print('============= gen_outputs  :', gen_outputs[0])
         for gen, gt in zip(gen_outputs, ground_truths):
-            #print('------------- ground_truths:', gt)
-            #print('============= gen_outputs  :', gen)
             rouge_scores = scorer.score(gt, gen)
             evals.append(
                 {
@@ -278,7 +276,6 @@ def eval_text_similarity(model, tokenizer, batch, generation_args):
     full_texts = tokenizer.batch_decode(
         tokens, skip_special_tokens=True, clean_up_tokenization_spaces=True
     )
-    #print("-------------- Question full", full_texts[0])
     ground_truths = [
         full_text.replace(input_text, "").strip()
         for input_text, full_text in zip(input_texts, full_texts)
@@ -331,6 +328,10 @@ def eval_text_similarity(model, tokenizer, batch, generation_args):
             scores, input_texts, ground_truths, gen_texts
         )
     ]
+    #for s in scores:
+    #    print('======================')
+    #    print(json.dumps(s, indent=2))
+    
     return scores
 
 

@@ -26,15 +26,18 @@ def main(cfg: DictConfig):
 
     tfu_cfg = cfg.get('tfu', None)
     if tfu_cfg is not None:
-        data_cfg = cfg.get('data', None)
-        assert data_cfg != None
-        data = get_unlearn_data(data_cfg, tokenizer=tokenizer, template_args=template_args)
-        data = [Document(page_content=d) for d in data]
-        db = FAISS.from_documents(data, HuggingFaceEmbeddings(model_name=tfu_cfg.get('FAISS_model')))
-        #retriever = db.as_retriever(search_type=tfu_cfg.get('search_type'), search_kwargs={"k": int(tfu_cfg.get('search_topk'))})
-        #retriever = RunnableLambda(lambda q: db.similarity_search_with_score(q, k=int(tfu_cfg.get('search_topk'))))
-        retriever = RunnableLambda(lambda q: db.similarity_search_with_relevance_scores(q, k=int(tfu_cfg.get('search_topk'))))
-        model.retriever = retriever
+        FAISS_model = tfu_cfg.get('FAISS_model', None)
+        if FAISS_model is not None:
+            data_cfg = cfg.get('data', None)
+            assert data_cfg != None
+            data = get_unlearn_data(data_cfg, tokenizer=tokenizer, template_args=template_args)
+            data = [Document(page_content=d) for d in data]
+            db = FAISS.from_documents(data, HuggingFaceEmbeddings(model_name=FAISS_model))
+            #retriever = db.as_retriever(search_type=tfu_cfg.get('search_type'), search_kwargs={"k": int(tfu_cfg.get('search_topk'))})
+            #retriever = RunnableLambda(lambda q: db.similarity_search_with_score(q, k=int(tfu_cfg.get('search_topk'))))
+            retriever = RunnableLambda(lambda q: db.similarity_search_with_relevance_scores(q, k=int(tfu_cfg.get('search_topk'))))
+            model.retriever = retriever
+
         model.help_model = AutoModelForCausalLM.from_pretrained(
             pretrained_model_name_or_path = tfu_cfg.get('help_model').get('pretrained_model_name_or_path'),
             attn_implementation = tfu_cfg.get('help_model').get('attn_implementation'),
