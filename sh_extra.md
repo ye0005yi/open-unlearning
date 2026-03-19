@@ -88,7 +88,7 @@ python src/eval.py --config-name=eval.yaml experiment=eval/tfu/default model.w=3
     "privleak": -43.75124999124974
 }
 ```
-### Method 2 RAG-based
+### Method 2 Train-based
 #### Finetune llama on forget10, model saved to saves/finetune/SAMPLE_TRAIN_forget
 ```bash
 python src/train.py --config-name=train.yaml experiment=finetune/tofu/forget10 task_name=SAMPLE_TRAIN_forget
