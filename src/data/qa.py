@@ -49,9 +49,18 @@ class QADataset(Dataset):
             self.max_length,
             self.predict_with_generate,
         )
-        item_dct = {
+        process = {
+            "type": "qa",
+            "func": preprocess_chat_instance,
             "question": prompt_msgs,
             "answer": response_msgs,
+            "tokenizer": self.tokenizer,
+            "template_args": self.template_args,
+            "max_length": self.max_length,
+            "predict_with_generate": self.predict_with_generate
+        }
+        item_dct = {
+            "process": process,
             "input_ids": tokenized_data["input_ids"],
             "labels": tokenized_data["labels"],
             "attention_mask": tokenized_data["attention_mask"],

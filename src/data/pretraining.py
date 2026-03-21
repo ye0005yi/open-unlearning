@@ -42,7 +42,18 @@ class CompletionDataset(Dataset):
             self.predict_with_generate,
             self.insert_space,
         )
+        process = {
+            "type": "pretraining",
+            "func": preprocess_pretraining_instance,
+            "prefix": prefix,
+            "text": text_content,
+            "tokenizer": self.tokenizer,
+            "max_length": self.max_length,
+            "predict_with_generate": self.predict_with_generate,
+            "insert_space": self.insert_space
+        }
         item_dct = {
+            "process": process,
             "input_ids": tokenized_data["input_ids"],
             "labels": tokenized_data["labels"],
             "attention_mask": tokenized_data["attention_mask"],
@@ -87,6 +98,18 @@ class PretrainingDataset(Dataset):
         return len(self.chunks)
 
     def __getitem__(self, idx):
-        return preprocess_pretraining_instance(
+        item = preprocess_pretraining_instance(
             self.tokenizer, "", self.chunks[idx], self.max_length
         )
+        process = {
+            "type": "pretraining",
+            "func": preprocess_pretraining_instance,
+            "prefix": "",
+            "text": self.chunks[idx],
+            "tokenizer": self.tokenizer,
+            "max_length": self.max_length,
+            "predict_with_generate": False,
+            "insert_space": False
+        }
+        item.update({"process": process})
+        return item

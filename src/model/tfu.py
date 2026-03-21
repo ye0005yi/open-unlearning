@@ -8,7 +8,7 @@ from transformers import AutoModelForCausalLM
 from transformers.cache_utils import DynamicCache
 import copy
 
-from data.utils import preprocess_chat_instance
+from data.utils import preprocess_chat_instance, preprocess_pretraining_instance
 from data.utils import IGNORE_INDEX
 
 from langchain.globals import set_debug
@@ -64,32 +64,51 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
         self.activations[self.activation_method](scores)
         return  
 
-    def _construct_enhanced(self, question, answer, enhanced_list):
+    def _construct_enhanced(self, question, answer, enhanced_list, process):
         temp_en = '\n'.join(enhanced_list)
         temp_en = f" Use the following context to help:\n{temp_en}\n"
-        template_args = copy.deepcopy(self._data.template_args)
-        if template_args["apply_chat_template"]:
-            system_prompt = template_args.get('system_prompt', "\nYou are a helpful assistant.")
-            system_prompt += temp_en
-            template_args.update({'system_prompt': system_prompt})
+        if process['type'] == 'qa':
+            template_args = copy.deepcopy(process['template_args'])
+            if template_args["apply_chat_template"]:
+                system_prompt = template_args.get('system_prompt', "\nYou are a helpful assistant.")
+                system_prompt += temp_en
+                template_args.update({'system_prompt': system_prompt})
+            else:
+                system_prompt_with_special_tokens = f"<|system|>\nYou are a helpful assistant.{temp_en}<|end|>\n"
+                template_args.update({'system_prompt_with_special_tokens': system_prompt_with_special_tokens})
+            process_func = process['func']
+            tokenized_data = process_func(
+                process['tokenizer'],
+                template_args,
+                [question],
+                [answer],
+                process['max_length'],
+                process['predict_with_generate']
+            )
+        elif process['type'] == 'pretraining':
+            prefix = temp_en + "\n\n" + question
+            text = answer
+            process_func = process['func']
+            tokenized_data = process_func(
+                process['tokenizer'],
+                prefix,
+                text,
+                process['max_length'],
+                process['predict_with_generate'],
+                process['insert_space']
+            )
         else:
-            system_prompt_with_special_tokens = f"<|system|>\nYou are a helpful assistant.{temp_en}<|end|>\n"
-            template_args.update({'system_prompt_with_special_tokens': system_prompt_with_special_tokens})
-
-        tokenized_data = preprocess_chat_instance(
-            self._data.tokenizer,
-            template_args,
-            [question],
-            [answer],
-            self._data.max_length,
-            self._data.predict_with_generate,
-        )
+            raise NotImplementedError(f"Process type {process['type']} not supported.")
 
         return tokenized_data
 
-    def __construct_enhanced_ids(self, questions, answers):
-        questions = [i[0] for i in questions]
-        answers = [i[0] for i in answers]
+    def __construct_enhanced_ids(self, process):
+        if process[0]['type'] == 'qa':
+            questions = [i['question'][0] for i in process]
+            answers = [i['answer'][0] for i in process]
+        elif process[0]['type'] == 'pretraining':
+            questions = [i['prefix'] for i in process]
+            answers = [i['text'] for i in process]
         enhanced_ori = self.retriever.batch(questions)
         enhanced = [[i.page_content for i, _ in bchs] for bchs in enhanced_ori]
         enhanced_scores = [torch.mean(torch.tensor([score for _, score in bchs])) for bchs in enhanced_ori]
@@ -97,15 +116,15 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
         self.adjust_w(enhanced_scores)
 
         #print([ (q, e[0][0], e[0][1]) for q, e in zip(questions, enhanced_ori)])
-        batch_enhanced = [self._construct_enhanced(q, a, enhanced_list) for q, a, enhanced_list in zip(questions, answers, enhanced)]
+        batch_enhanced = [self._construct_enhanced(q, a, enhanced_list, p) for q, a, enhanced_list, p in zip(questions, answers, enhanced, process)]
 
         batch_enhanced = self._collators(batch_enhanced)
         batch_enhanced = {k: v.to(self.device) if hasattr(v, "to") else v for k, v in batch_enhanced.items()}
         return batch_enhanced
 
-    def _construct_enhanced_ids(self, questions, answers, input_ids, kwargs):
+    def _construct_enhanced_ids(self, process, input_ids, kwargs):
         if getattr(self, "retriever", None):
-            return self.__construct_enhanced_ids(questions, answers)
+            return self.__construct_enhanced_ids(process)
         elif input_ids is not None:
             batch_sz = len(input_ids)
             self.adjust_w(torch.ones(batch_sz))
@@ -143,10 +162,9 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
         return ret_ori
 
     def forward(self, *args, **kwargs):
-        questions = kwargs.pop('questions', None)
-        answers = kwargs.pop('answers', None)
-        if not self.gen_mode and questions != None and self._data is not None:
-            batch_enhanced = self._construct_enhanced_ids(questions, answers, None, kwargs)
+        process = kwargs.pop('process', None)
+        if not self.gen_mode and process != None and self._data is not None:
+            batch_enhanced = self._construct_enhanced_ids(process, None, kwargs)
             ret_enh_unignore = self._get_enhanced_logits(batch_enhanced, batch_enhanced['labels'] != IGNORE_INDEX)
         if self.gen_mode:
             if self.first_time == 0:
@@ -165,7 +183,7 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
 
         ret_ori = super().forward(*args, **kwargs)
 
-        if not self.gen_mode and questions != None and self._data is not None:
+        if not self.gen_mode and process != None and self._data is not None:
             ret_ori = self._compose_logits(ret_ori, ret_enh_unignore, kwargs['labels'] != IGNORE_INDEX)
         if self.gen_mode:
             ret_ori = self._compose_logits(ret_ori, ret_enh_unignore, (slice(None), slice(-1, None), slice(None))) #[:, -1:, :]
@@ -177,13 +195,12 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
         input_ids = args[0]
         _ = kwargs.pop('input_ids', None)
         labels = kwargs.pop('labels', None)
-        questions = kwargs.pop('questions', None)
-        answers = kwargs.pop('answers', None)
+        process = kwargs.pop('process', None)
 
-        if questions != None and self._data is not None:
+        if process != None and self._data is not None:
             self.gen_mode = True
             self.first_time = 0
-            tmp_enhanced = self._construct_enhanced_ids(questions, answers, input_ids, kwargs)
+            tmp_enhanced = self._construct_enhanced_ids(process, input_ids, kwargs)
             self.batch_enhanced_ids = tmp_enhanced['input_ids']
             self.batch_enhanced_attention_mask = tmp_enhanced['attention_mask']
             # pre calcualted mask to append batch_size * 1, looks like [[1], [1], ..., [1]]
@@ -191,7 +208,7 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
 
         ret = super().generate(*args, **kwargs)
 
-        if questions != None and self._data is not None:
+        if process != None and self._data is not None:
             self.gen_mode = False
             self.first_time = 0
             self.batch_enhanced_ids = None

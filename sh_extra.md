@@ -1,5 +1,5 @@
-## TFU
-
+# TFU
+## TFU on TOFU
 ### Eval on retain original
 ```bash
 python src/eval.py --config-name=eval.yaml experiment=eval/tofu/default task_name=EVAL_LLAMA_1B_RETAIN
@@ -97,4 +97,16 @@ python src/train.py --config-name=train.yaml experiment=finetune/tofu/forget10 t
 note: using above model as help_model, see configs/experiment/eval/tfu/finetuned.yaml help_model.pretrained_model_name_or_path: "./saves/finetune/SAMPLE_TRAIN_forget"
 ```bash
 python src/eval.py --config-name=eval.yaml experiment=eval/tfu/finetuned model.w=3 task_name=EVAL_LLAMA_1B_TFU_finetuned_w3
+```
+## TFU on MUSE (Work in progress)
+
+- Train a finetuned model, change ```configs/experiment/finetune/muse/1b.yaml``` if needed (model .etc.) 
+```bash
+python src/train.py --config-name=train.yaml experiment=finetune/muse/1b task_name=FINETUNED_1B
+```
+
+
+- Quick test but it's on original llama 1b instruct, you should change the model in ```configs/experiment/eval/tfu/muse.yaml```, see ```pretrained_model_name_or_path``` (should point to the finetuned model localy) and ```override /model: Llama-2-7b-hf```. Also pay attention to the assist model params, I didn't test on different model:
+```bash
+python src/eval.py --config-name=eval.yaml experiment=eval/tfu/muse model.w=2 task_name=EVAL_LLAMA_1B_TFU_MUSE_test
 ```
