@@ -28,6 +28,7 @@ class AutoModelForCausalLM(LlamaForCausalLM):
         _ = kwargs.pop('labels', None)
         _ = kwargs.pop('questions', None)
         _ = kwargs.pop('answers', None)
+        _ = kwargs.pop('process', None)
         return super().generate(*args, **kwargs)
 
 class ProbedLlamaForCausalLM(LlamaForCausalLM):
