@@ -48,15 +48,15 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
     
     def activation_static(self, scores):
         self.w_adj = scores.to(device=self.device, copy=True)
-        self.w_adj[scores <= 0.55] = 0
-        self.w_adj[scores > 0.55] = self.w - 1
+        self.w_adj[scores <= self.activation_threshold] = 0
+        self.w_adj[scores > self.activation_threshold] = self.w - 1
         self.w_adj += 1
         return
 
     def activation_similarity(self, scores):
         self.w_adj = scores.to(device=self.device, copy=True)
-        self.w_adj[scores <= 0.55] = 0
-        self.w_adj[scores > 0.55] *= self.w - 1
+        self.w_adj[scores <= self.activation_threshold] = 0
+        self.w_adj[scores > self.activation_threshold] *= self.w - 1
         self.w_adj += 1
         return
     
