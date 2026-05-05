@@ -44,6 +44,8 @@ def main(cfg: DictConfig):
             torch_dtype = tfu_cfg.get('help_model').get('torch_dtype'))
         model.help_model.to(model.device)
         model.set_activation(tfu_cfg.get('activation_method'), tfu_cfg.get('activation_threshold'))
+        if tfu_cfg.get('enhanced_max_length', None) is not None:
+            model.enhanced_max_length = tfu_cfg.get('enhanced_max_length')
 
     eval_cfgs = cfg.eval
     evaluators = get_evaluators(eval_cfgs)

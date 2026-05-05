@@ -20,7 +20,7 @@ logger = logging.getLogger("model")
 class TFULlamaForCausalLM(LlamaForCausalLM):
 
     def __init__(self, config):
-        super().__init__(config)     
+        super().__init__(config)
         self.w = 1.
         self.w_adj = torch.tensor(1)
         self.gen_mode = False
@@ -32,6 +32,7 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
         }
         self.activation_method = "similarity"
         self.activation_threshold = 0.55
+        self.enhanced_max_length = getattr(config, 'max_position_embeddings', 4096)
     
     def set_activation(self, method, threshold):
         if method not in self.activations:
@@ -67,6 +68,7 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
     def _construct_enhanced(self, question, answer, enhanced_list, process):
         temp_en = '\n'.join(enhanced_list)
         temp_en = f" Use the following context to help:\n{temp_en}\n"
+        enhanced_max_length = self.enhanced_max_length
         if process['type'] == 'qa':
             template_args = copy.deepcopy(process['template_args'])
             if template_args["apply_chat_template"]:
@@ -82,7 +84,7 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
                 template_args,
                 [question],
                 [answer],
-                process['max_length'],
+                enhanced_max_length,
                 process['predict_with_generate']
             )
         elif process['type'] == 'pretraining':
@@ -93,7 +95,7 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
                 process['tokenizer'],
                 prefix,
                 text,
-                process['max_length'],
+                enhanced_max_length,
                 process['predict_with_generate'],
                 process['insert_space']
             )
@@ -138,7 +140,6 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
         is_all_one = torch.all(torch.abs(self.w_adj - 1.0) < 1e-6)
         if is_all_one:
             return None
-        #ret_enh = super().forward(**batch_enhanced)
         ret_enh = self.help_model(**batch_enhanced)
         ret_enh_unignore = ret_enh.logits[mask]
         if batch_enhanced.get('use_cache', False):
@@ -150,15 +151,13 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
         if is_all_one:
             return ret_ori
         ret_ori_unignore = ret_ori.logits[mask]
-        assert ret_ori_unignore.shape == ret_enh_unignore.shape
         tmp_adj = self.w_adj
         tmp_adj = tmp_adj.unsqueeze(-1)
         if isinstance(mask, tuple):
             tmp_adj = tmp_adj.unsqueeze(-1)
         else:
             tmp_adj = tmp_adj.expand(mask.shape)[mask][:, None]
-        ret_ori.logits[mask] *= tmp_adj
-        ret_ori.logits[mask] += (1 - tmp_adj) * ret_enh_unignore
+        ret_ori.logits[mask] = tmp_adj * ret_ori_unignore + (1 - tmp_adj) * ret_enh_unignore
         return ret_ori
 
     def forward(self, *args, **kwargs):
@@ -171,24 +170,20 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
                 self.gen_past_key_values = DynamicCache()
                 enhanced_ids = self.batch_enhanced_ids
             else:
-                #self.batch_enhanced_ids = torch.cat([self.batch_enhanced_ids, kwargs['input_ids'][:, -1:]], dim=-1)
                 self.batch_enhanced_attention_mask = torch.cat([self.batch_enhanced_attention_mask, self.pre_cal_append_att_mask], dim=-1)
                 assert self.gen_past_key_values != None
                 enhanced_ids = kwargs['input_ids'][:, -1:]
             batch_enhanced = {'input_ids': enhanced_ids, 'attention_mask': self.batch_enhanced_attention_mask, 'use_cache': True, 'past_key_values':self.gen_past_key_values}
-            #print(self._data.tokenizer.decode(enhanced_ids[0]), end='')
-            ret_enh_unignore = self._get_enhanced_logits(batch_enhanced, (slice(None), slice(-1, None), slice(None))) #[:, -1:, :]
+            ret_enh_unignore = self._get_enhanced_logits(batch_enhanced, (slice(None), slice(-1, None), slice(None)))
             self.first_time += 1
-            #print(self._data.tokenizer.decode(kwargs['input_ids'][0]), end='')
 
         ret_ori = super().forward(*args, **kwargs)
 
         if not self.gen_mode and process != None and self._data is not None:
             ret_ori = self._compose_logits(ret_ori, ret_enh_unignore, kwargs['labels'] != IGNORE_INDEX)
         if self.gen_mode:
-            ret_ori = self._compose_logits(ret_ori, ret_enh_unignore, (slice(None), slice(-1, None), slice(None))) #[:, -1:, :]
+            ret_ori = self._compose_logits(ret_ori, ret_enh_unignore, (slice(None), slice(-1, None), slice(None)))
 
-        #print(f"Allocated8: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
         return ret_ori
     
     def generate(self, *args, **kwargs):
