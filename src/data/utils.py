@@ -163,12 +163,10 @@ def preprocess_pretraining_instance(
     Returns:
         Dict[str, torch.Tensor]: A dictionary containing 'input_ids', 'labels', and 'attention_mask' tensors for model input.
     """
-    full_seq_ids = tokenizer(
-        prefix + (" " if insert_space else "") + text_content, add_special_tokens=True
-    )["input_ids"]
-    prefix_ids = tokenizer(prefix, add_special_tokens=True)["input_ids"]
+    prefix_ids = tokenizer(prefix + (" " if insert_space else ""), add_special_tokens=True)["input_ids"]
+    text_ids = tokenizer(text_content, add_special_tokens=False)["input_ids"]
     prefix_len = len(prefix_ids)
-    full_seq_ids = full_seq_ids[: prefix_len + max_length]  # manual truncation
+    full_seq_ids = prefix_ids + text_ids[:max_length]
 
     len_matched = prefix_len
     if len_matched == 0:  # never give loss on index 0, when prefix is empty
