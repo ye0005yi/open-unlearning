@@ -1,4 +1,4 @@
-from transformers import AutoConfig, LlamaForCausalLM 
+from transformers import AutoConfig, LlamaForCausalLM
 import torch
 import torch.nn as nn
 import logging
@@ -210,3 +210,27 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
             self.batch_enhanced_attention_mask = None
             self.gen_past_key_values = None
         return ret
+
+
+def _make_tfu_class(base_cls):
+    """Create a TFU variant for any CausalLM base class by copying TFU methods."""
+    new_cls = type(
+        f"TFU{base_cls.__name__}",
+        (base_cls,),
+        {k: v for k, v in TFULlamaForCausalLM.__dict__.items()
+         if not k.startswith('__') or k == '__init__'}
+    )
+    return new_cls
+
+
+try:
+    from transformers import Qwen2ForCausalLM
+    TFUQwen2ForCausalLM = _make_tfu_class(Qwen2ForCausalLM)
+except ImportError:
+    pass
+
+try:
+    from transformers import MistralForCausalLM
+    TFUMistralForCausalLM = _make_tfu_class(MistralForCausalLM)
+except ImportError:
+    pass

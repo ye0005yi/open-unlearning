@@ -6,6 +6,14 @@ import torch
 import logging
 from model.probe import ProbedLlamaForCausalLM, AutoModelForCausalLM
 from model.tfu import TFULlamaForCausalLM
+try:
+    from model.tfu import TFUQwen2ForCausalLM
+except (ImportError, NameError):
+    pass
+try:
+    from model.tfu import TFUMistralForCausalLM
+except (ImportError, NameError):
+    pass
 
 hf_home = os.getenv("HF_HOME", default=None)
 
@@ -113,3 +121,11 @@ def get_tokenizer(tokenizer_cfg: DictConfig):
 _register_model(AutoModelForCausalLM)
 _register_model(ProbedLlamaForCausalLM)
 _register_model(TFULlamaForCausalLM)
+try:
+    _register_model(TFUQwen2ForCausalLM)
+except NameError:
+    pass
+try:
+    _register_model(TFUMistralForCausalLM)
+except NameError:
+    pass
