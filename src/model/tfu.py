@@ -214,12 +214,23 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
 
 def _make_tfu_class(base_cls):
     """Create a TFU variant for any CausalLM base class by copying TFU methods."""
-    new_cls = type(
-        f"TFU{base_cls.__name__}",
-        (base_cls,),
-        {k: v for k, v in TFULlamaForCausalLM.__dict__.items()
-         if not k.startswith('__') or k == '__init__'}
-    )
+    import types
+
+    new_cls = type(f"TFU{base_cls.__name__}", (base_cls,), {})
+
+    for k, v in TFULlamaForCausalLM.__dict__.items():
+        if k.startswith('__') and k != '__init__':
+            continue
+        if isinstance(v, types.FunctionType):
+            if v.__closure__ and '__class__' in v.__code__.co_freevars:
+                idx = v.__code__.co_freevars.index('__class__')
+                new_closure = list(v.__closure__)
+                new_closure[idx] = types.CellType(new_cls)
+                v = types.FunctionType(
+                    v.__code__, v.__globals__, v.__name__,
+                    v.__defaults__, tuple(new_closure))
+            setattr(new_cls, k, v)
+
     return new_cls
 
 
