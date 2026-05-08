@@ -36,7 +36,7 @@ def main(cfg: DictConfig):
         if FAISS_model is not None:
             data_cfg = cfg.get('data', None)
             assert data_cfg != None
-            cache_key = hashlib.md5((OmegaConf.to_yaml(data_cfg) + FAISS_model).encode()).hexdigest()
+            cache_key = hashlib.md5((str(OmegaConf.to_container(data_cfg, resolve=True)) + FAISS_model).encode()).hexdigest()
             cache_dir = os.path.join(".cache", "faiss", cache_key)
             embeddings = HuggingFaceEmbeddings(model_name=FAISS_model)
             if os.path.exists(cache_dir):
