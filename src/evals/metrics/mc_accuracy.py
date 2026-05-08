@@ -64,7 +64,8 @@ def mc_accuracy(model, **kwargs):
     if not hasattr(model, '_data') or model._data is None:
         model._data = True
     if not hasattr(model, '_collators') or model._collators is None:
-        model._collators = collator
+        model._collators = DataCollatorForSupervisedDataset(
+            tokenizer=tokenizer, padding_side="left", index=None)
 
     ds = load_dataset(hf_dataset, hf_subset, split="test", cache_dir=cache_dir)
 
