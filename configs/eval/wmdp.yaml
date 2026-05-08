@@ -1,0 +1,12 @@
+# @package eval.wmdp
+
+defaults:
+  - wmdp_metrics:
+    - mc_accuracy
+
+handler: WMDPEvaluator
+output_dir: ${paths.output_dir}
+metrics: {}
+overwrite: false
+data_split: cyber
+batch_size: 1

@@ -22,6 +22,7 @@ from evals.metrics.utility import (
     hm_aggregate,
     classifier_prob,
 )
+from evals.metrics.mc_accuracy import mc_accuracy
 
 METRICS_REGISTRY: Dict[str, UnlearningMetric] = {}
 
@@ -73,3 +74,6 @@ _register_metric(mia_reference)
 
 # Register Utility metrics
 _register_metric(classifier_prob)
+
+# Register MC metrics
+_register_metric(mc_accuracy)

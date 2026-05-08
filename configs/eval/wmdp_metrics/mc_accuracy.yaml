@@ -1,0 +1,7 @@
+# @package eval.wmdp.metrics.mc_accuracy
+
+handler: mc_accuracy
+hf_dataset: "cais/wmdp"
+hf_subset: "wmdp-${eval.wmdp.data_split}"
+max_length: 2048
+cache_dir: null
