@@ -30,7 +30,7 @@ if [ -d "$CKPT" ]; then
     echo "[SKIP] 1B Books full (exists)"
 else
     echo "[RUN]  1B Books full ($(date '+%H:%M:%S'))"
-    $PYTHON src/train.py --config-name=finetune.yaml \
+    $PYTHON src/train.py --config-name=train.yaml \
         experiment=finetune/muse/1b \
         data_split=Books \
         data_sub_set=full \
@@ -44,7 +44,7 @@ if [ -d "$CKPT" ]; then
     echo "[SKIP] 1B News retain (exists)"
 else
     echo "[RUN]  1B News retain ($(date '+%H:%M:%S'))"
-    $PYTHON src/train.py --config-name=finetune.yaml \
+    $PYTHON src/train.py --config-name=train.yaml \
         experiment=finetune/muse/1b \
         data_split=News \
         data_sub_set=retain \
@@ -58,7 +58,7 @@ if [ -d "$CKPT" ]; then
     echo "[SKIP] 1B Books retain (exists)"
 else
     echo "[RUN]  1B Books retain ($(date '+%H:%M:%S'))"
-    $PYTHON src/train.py --config-name=finetune.yaml \
+    $PYTHON src/train.py --config-name=train.yaml \
         experiment=finetune/muse/1b \
         data_split=Books \
         data_sub_set=retain \
