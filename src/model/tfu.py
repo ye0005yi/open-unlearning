@@ -106,8 +106,8 @@ class TFULlamaForCausalLM(LlamaForCausalLM):
 
     def __construct_enhanced_ids(self, process):
         if process[0]['type'] == 'qa':
-            questions = [i['question'][0] for i in process]
-            answers = [i['answer'][0] for i in process]
+            questions = [i['question'][-1] for i in process]
+            answers = [i['answer'][-1] for i in process]
         elif process[0]['type'] == 'pretraining':
             questions = [i['prefix'] for i in process]
             answers = [i['text'] for i in process]
