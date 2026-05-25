@@ -10,12 +10,12 @@
 # Usage: CUDA_VISIBLE_DEVICES=1 bash scripts/g3_verify.sh
 ###############################################################################
 set -o pipefail
-source /data/tfu_jx/hf_setup.sh
+source /path/to/workdir/hf_setup.sh
 
-WORK_DIR="/data/tfu_jx/open-unlearning"
-PYTHON="/data/tfu_jx/miniconda/envs/tfu/bin/python"
-export CUDA_HOME="/data/tfu_jx/miniconda/envs/tfu"
-export HF_HOME="/data/tfu_jx/.cache/huggingface"
+WORK_DIR="/path/to/workdir/open-unlearning"
+PYTHON="/path/to/workdir/miniconda/envs/tfu/bin/python"
+export CUDA_HOME="/path/to/workdir/miniconda/envs/tfu"
+export HF_HOME="/path/to/workdir/.cache/huggingface"
 cd "$WORK_DIR"
 
 echo "=== G3 WMDP Quick Verification: GPU=$CUDA_VISIBLE_DEVICES ==="

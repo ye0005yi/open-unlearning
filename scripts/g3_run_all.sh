@@ -17,8 +17,8 @@
 #   - Grand total: 2 splits × 60 = 120 runs + 3 verify = 123
 ###############################################################################
 set -o pipefail
-source /data/tfu_jx/hf_setup.sh
-cd /data/tfu_jx/open-unlearning
+source /path/to/workdir/hf_setup.sh
+cd /path/to/workdir/open-unlearning
 mkdir -p logs
 
 echo "========================================"

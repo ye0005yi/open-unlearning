@@ -24,11 +24,11 @@
 # Monitor: tail -f logs/longterm_gpu1.log
 ###############################################################################
 set +e
-source /data/tfu_jx/hf_setup.sh
+source /path/to/workdir/hf_setup.sh
 
-WORK_DIR="/data/tfu_jx/open-unlearning"
-export CUDA_HOME="/data/tfu_jx/miniconda/envs/tfu"
-export HF_HOME="/data/tfu_jx/.cache/huggingface"
+WORK_DIR="/path/to/workdir/open-unlearning"
+export CUDA_HOME="/path/to/workdir/miniconda/envs/tfu"
+export HF_HOME="/path/to/workdir/.cache/huggingface"
 export CUDA_VISIBLE_DEVICES=1
 cd "$WORK_DIR"
 mkdir -p logs

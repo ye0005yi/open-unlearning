@@ -8,17 +8,17 @@
 #   3. 1B Books retain (for retain_logs_path)
 #
 # Note: 1B News full already exists at:
-#   /data/tfu_jx/open-unlearning/saves/finetune/V7_muse_news_full_1epoch
+#   /path/to/workdir/open-unlearning/saves/finetune/V7_muse_news_full_1epoch
 #
 # Usage: CUDA_VISIBLE_DEVICES=0 bash scripts/g2_finetune_1b.sh
 ###############################################################################
 set -o pipefail
-source /data/tfu_jx/hf_setup.sh
+source /path/to/workdir/hf_setup.sh
 
-WORK_DIR="/data/tfu_jx/open-unlearning"
-PYTHON="/data/tfu_jx/miniconda/envs/tfu/bin/python"
-export CUDA_HOME="/data/tfu_jx/miniconda/envs/tfu"
-export HF_HOME="/data/tfu_jx/.cache/huggingface"
+WORK_DIR="/path/to/workdir/open-unlearning"
+PYTHON="/path/to/workdir/miniconda/envs/tfu/bin/python"
+export CUDA_HOME="/path/to/workdir/miniconda/envs/tfu"
+export HF_HOME="/path/to/workdir/.cache/huggingface"
 cd "$WORK_DIR"
 
 echo "=== G2 MUSE 1B Finetuning: GPU=$CUDA_VISIBLE_DEVICES ==="
